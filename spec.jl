@@ -48,7 +48,7 @@ with(auth) do
     end  
 end
 
-namespace(app, "/admin", auth) do
+namespace(app, "/admin", auth) do app
     get(app, "/pages/<page_id::Int>") do req, res
         page = get_page(req.resources[:page_id])
         render("viewName.ejl", page)
@@ -59,6 +59,20 @@ namespace(app, "/admin", auth) do
         redirect("/pages/", req.resources[:page_id])
     end
 end
+
+namespace(app, "/admin") do app
+    get(app,"/pages") do req, res
+        # ...
+    end
+end
+# will generate url: "/admin/pages"
+
+namespace(app, "/admin") do abc
+    get(app,"-pages") do req, res
+        # ...
+    end
+end
+# will generate: "/admin-pagse""
 
 route(app, "/*") do req, res
     res.headers["Status"] = 404
