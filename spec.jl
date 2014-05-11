@@ -72,7 +72,7 @@ namespace(app, "/admin") do abc
         # ...
     end
 end
-# will generate: "/admin-pagse""
+# will generate: "/admin-pages""
 
 route(app, "/*") do req, res
     res.headers["Status"] = 404
