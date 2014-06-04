@@ -10,10 +10,14 @@ abstract RouteNode
 immutable StringNode <: RouteNode
     val::String
 end
+
 # Equality & Matching for building / traversing the routing table
+==(s1::StringNode, s2::String)     = s1.val == s2
+==(s1::StringNode, s2::StringNode) = s1.val == s2.val
+ismatch(s1::StringNode, s2::String)     = isequal(s1, s2)
+# Julia 0.2 compatibility
 isequal(s1::StringNode, s2::String)     = s1.val == s2
 isequal(s1::StringNode, s2::StringNode) = s1.val == s2.val
-ismatch(s1::StringNode, s2::String)     = isequal(s1, s2)
 
 # Returns the name part of a RegEx or DataType dynamic route
 # Will return `foo` in `<foo::String>`
@@ -48,9 +52,12 @@ DynamicNode(n::String, r::Regex)    = DynamicNode(n,r,nothing)
 DynamicNode(p::String, c::Function) = DynamicNode(getname(p), Regex("^$(match(r":%([^>]*)>", p).captures[1])\$"), c)
 
 # Equality & Matching for building / traversing the routing table
+==(s1::DynamicNode, s2::String)      = Base.ismatch( s1.regex, s2 )
+==(s1::DynamicNode, s2::DynamicNode) = s1.regex.pattern == s2.regex.pattern && s1.name == s2.name
+ismatch(s1::DynamicNode, s2::String)      = isequal( s1, s2 )
+# Julia 0.2 compatibility
 isequal(s1::DynamicNode, s2::String)      = Base.ismatch( s1.regex, s2 )
 isequal(s1::DynamicNode, s2::DynamicNode) = s1.regex.pattern == s2.regex.pattern && s1.name == s2.name
-ismatch(s1::DynamicNode, s2::String)      = isequal( s1, s2 )
 
 # NamedParam & Regex node constructors, these are NOT types.
 NamedParamNode(p::String) = DynamicNode(p[2:length(p)-1], r".*")
@@ -75,8 +82,11 @@ function extend_params(params::Params, v::DynamicNode, p::String)
 end
 
 typealias Route (RouteNode,Union(Function,Nothing)) # ('/about', function()...)
-isequal(r::Route, v) = isequal(r[1], v)
+==(r::Route, v) = isequal(r[1], v)
 ismatch(r::Route, v) = ismatch(r[1], v)
+==(node::RouteNode, route::Route) = isequal(node, route[1])
+# Julia 0.2 compatibility
+isequal(r::Route, v) = isequal(r[1], v)
 isequal(node::RouteNode, route::Route) = isequal(node, route[1])
 
 typealias RoutingTable Tree
