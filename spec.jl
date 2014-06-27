@@ -13,6 +13,7 @@ end
 
 # Route with URL vars
 route(app, GET, "/hello/<id::Int>/<name::%[a-z]{3}[0-9]{2}>") do req, res
+    # `req` has no field `resources` -- `req.state[:route_params]["id"]`? (Issue #21)
     req.resources[:id] == 99 ? string("Go to hell ", req.resources[:name]) : string("Hello ", req.resources[:name])
 end
 
@@ -24,9 +25,10 @@ route(app, GET | POST, "/") do req, res
     # ...
 end
 
-route(app, ALL, "/") do req, res
-    # ...
-end
+# `ALL` not defined
+# route(app, ALL, "/") do req, res
+#     # ...
+# end
 
 function handleImageUpload(req, res)
     "Nice pix."
@@ -36,7 +38,7 @@ route(app, POST, "/upload", handleImageUpload)
 
 # Route middleware
 auth = Morsel.Midware() do req, res
-    if !get(session(req), :authenticated, false)
+    if !get(session(req), :authenticated, false) # (`session` not defined)
         return req, redirect("/login")
     end
     req, res
@@ -50,19 +52,20 @@ end
 
 namespace(app, "/admin", auth) do app
     get(app, "/pages/<page_id::Int>") do req, res
-        page = get_page(req.resources[:page_id])
+        page = get_page(req.resources[:page_id]) # (`*_page` not defined)
         render("viewName.ejl", page)
     end
 
     put(app, "/pages/<page_id::Int>") do req, res
         update_page(get_page(req.resources[:page_id]), req.params)
+        # `redirect` not defined (Issue #20)
         redirect("/pages/", req.resources[:page_id])
     end
 end
 
 route(app, GET, "/*") do req, res
     res.headers["Status"] = 404
-    render("404.ejl")
+    render("404.ejl") # `render` not defined -- looks like this did exist in webstack.jl
 end
 
 start(app, 8000)
