@@ -209,7 +209,6 @@ function start(app::App, port::Int)
         for comp in split(req.state[:resource], '/')
             !isempty(comp) && push!(path, comp)
         end
-        handler, params = match_route_handler(methodizedRouteTable, path)
         is_websock = haskey(req.state, :websocket)
         methodizedRouteTable = get_routes(app, HttpMethodNameToBitmask[req.http_req.method], is_websock)
         handler, params = match_route_handler(methodizedRouteTable, path)
