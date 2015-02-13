@@ -30,6 +30,17 @@ end
 start(app, 8000)
 ```
 
+The `wsroute` function can be used to set up a route that opens a WebSocket connection.
+
+```julia
+wsroute(app, GET, "/echo") do req, sock
+    while true
+        msg = bytestring(read(sock))
+        write(sock, msg)
+    end
+end
+```
+
 ---
 
 ```julia
