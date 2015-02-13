@@ -1,12 +1,14 @@
 module Morsel
 
 using HttpServer,
+      WebSockets,
       HttpCommon,
       Meddle
 
 export App,
        app,
        route,
+       wsroute,
        namespace,
        with,
        get,
@@ -47,11 +49,14 @@ routing_tables() = (HttpMethodBitmask => RoutingTable)[method => RoutingTable()
 #
 type App
     routes::Dict{HttpMethodBitmask, RoutingTable}
+    wsroutes::Dict{HttpMethodBitmask, RoutingTable}
     state::Dict{Any,Any}
 end
 function app()
-    App(routing_tables(), Dict{Any,Any}())
+    App(routing_tables(), routing_tables(), Dict{Any,Any}())
 end
+
+get_routes(app, method, websock) = websock ? app.wsroutes[method] : app.routes[method]
 
 # This defines a route and adds it to the `app.routes` dictionary. As HTTP
 # methods are bitmasked integers they can be combined using the bitwise or
@@ -70,7 +75,7 @@ end
 #       "Hello, world"
 #   end
 #
-function route(handler::Function, app::App, methods::Int, path::String)
+function route(handler::Function, app::App, methods::Int, path::String; websocket=false)
     prefix    = get(app.state, :routeprefix, "")
     withstack = get(app.state, :withstack, Midware[])
     handle    = handler
@@ -79,11 +84,14 @@ function route(handler::Function, app::App, methods::Int, path::String)
         handle = (req::MeddleRequest, res::Response) -> Meddle.handle(stack, req, res)
     end
     for method in HttpMethodBitmasks
-        methods & method == method && register!(app.routes[method], prefix * path, handle)
+        if (methods & method == method)
+            register!(get_routes(app, method, websocket), prefix * path, handle)
+        end
     end
     app
 end
-route(a::App, m::Int, p::String, h::Function) = route(h, a, m, p)
+route(a::App, m::Int, p::String, h::Function; kwargs...) = route(h, a, m, p; kwargs...)
+wsroute(args...) = route(args...; websocket=true)
 
 function namespace(thunk::Function, app::App, prefix::String)
     beforeprefix = get(app.state, :routeprefix, "")
@@ -201,22 +209,43 @@ function start(app::App, port::Int)
         for comp in split(req.state[:resource], '/')
             !isempty(comp) && push!(path, comp)
         end
-        methodizedRouteTable = app.routes[HttpMethodNameToBitmask[req.http_req.method]]
+        handler, params = match_route_handler(methodizedRouteTable, path)
+        is_websock = haskey(req.state, :websocket)
+        methodizedRouteTable = get_routes(app, HttpMethodNameToBitmask[req.http_req.method], is_websock)
         handler, params = match_route_handler(methodizedRouteTable, path)
         for (k,v) in params
           req.params[symbol(k)] = v
         end
+
         if handler != nothing
-            return prepare_response(handler(req, res), req, res)
+            if is_websock
+                handler(req, req.state[:websocket])
+                return respond(req, Response(200))
+            else
+                return prepare_response(handler(req, res), req, res)
+            end
         end
         respond(req, Response(404))
     end
 
     stack = middleware(DefaultHeaders, URLDecoder, CookieDecoder, BodyDecoder, MorselApp)
     http = HttpHandler((req, res) -> Meddle.handle(stack, MeddleRequest(req,Dict{Symbol,Any}(),Dict{Symbol,Any}()), res))
+
+    websock = WebSocketHandler() do req, sock
+        try
+            Meddle.handle(stack, MeddleRequest(
+                req, Dict{Symbol, Any}([(:websocket, sock)]), Dict{Symbol,Any}()), Response(200))
+            close(sock)
+        catch ex
+            println(STDERR, "Error inside websocket loop!")
+            Base.error_show(STDERR, ex, catch_backtrace())
+            close(sock)
+        end
+    end
+
     http.events["listen"] = (port) -> println("Morsel is listening on $port...")
 
-    server = Server(http)
+    server = Server(http, websock)
     run(server, port)
 end
 
