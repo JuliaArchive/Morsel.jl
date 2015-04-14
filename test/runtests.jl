@@ -3,6 +3,8 @@ using FactCheck
 import Requests
 req = Requests
 
+include("Trees_test.jl")
+
 app = Morsel.app()
 
 get(app, "/") do req, res
