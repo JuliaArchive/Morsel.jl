@@ -89,3 +89,17 @@ facts("redirect") do
     @fact response.status => 302
     @fact response.headers["Location"] => "/"
 end
+
+# test for issue 38: https://github.com/JuliaWeb/Morsel.jl/issues/38
+facts("shuold update routes") do
+    get(app, "/update_route") do req, res
+        "Original"
+    end
+
+    get(app, "/update_route") do req, res
+        "Updated"
+    end
+
+    response = req.get("http://localhost:8000/update_route")
+    @fact response.data => "Updated"
+end
