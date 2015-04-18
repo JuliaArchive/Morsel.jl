@@ -19,6 +19,15 @@ facts("Tree") do
 
         @fact getchild(t, :b) => nothing
     end
+
+    context("search") do
+        tree = Tree(:root)
+        insert!(tree, [:a, :b])
+        insert!(tree, [:a, :b])
+        @fact tree.value => :root
+
+        @fact tree.children[1].value => :a
+    end
 end
 
 end
