@@ -25,6 +25,19 @@ end
 function insert!(tree::Tree, values::Array)
     if isempty(values)
         tree
+    elseif length(values) == 1
+        # for last value,
+        # if it has already in the tree.children, update it with the last value
+        # if it is not in the tree.children, push it in the tree.children.
+        leaf = Tree(values[1])
+
+        i = findfirst((t) -> isequal(t.value, leaf.value), tree.children)
+
+        if i != 0 # the leaf has already in the tree.children, replace it
+            tree.children[i] = leaf
+        else
+            push!(tree.children, leaf)
+        end
     elseif ischild(values[1], tree)
         t = getchild(tree, values[1])
         insert!(t, values[2:end])
