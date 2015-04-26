@@ -77,7 +77,7 @@ function extend_params(params::Params, v::DynamicNode, p::String)
     params
 end
 
-typealias Route (RouteNode,Union(Function,Nothing)) # ('/about', function()...)
+typealias Route @compat Tuple{ RouteNode,Union(Function,Nothing) } # ('/about', function()...)
 isequal(r::Route, v) = isequal(r[1], v)
 ismatch(r::Route, v) = ismatch(r[1], v)
 isequal(node::RouteNode, route::Route) = isequal(node, route[1])
